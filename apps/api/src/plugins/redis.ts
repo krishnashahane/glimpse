@@ -3,6 +3,7 @@ import { FastifyPluginAsync } from 'fastify'
 import { redis } from '../lib/redis'
 
 const redisPlugin: FastifyPluginAsync = async (fastify) => {
+  if (!redis) return
   await redis.connect()
   fastify.decorate('redis', redis)
   fastify.addHook('onClose', async () => {

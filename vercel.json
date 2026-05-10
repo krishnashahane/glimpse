@@ -1,11 +1,18 @@
 {
   "version": 2,
-  "buildCommand": "cd apps/web && npm install --legacy-peer-deps && npm run build",
+  "buildCommand": "(cd apps/api && npm install && npx prisma generate) && (cd apps/web && npm install --legacy-peer-deps && npm run build)",
   "outputDirectory": "apps/web/dist",
   "installCommand": "echo skip",
   "framework": null,
+  "functions": {
+    "api/[...path].ts": {
+      "memory": 1024,
+      "maxDuration": 30,
+      "includeFiles": "apps/api/node_modules/.prisma/**"
+    }
+  },
   "rewrites": [
-    { "source": "/((?!assets/).*)", "destination": "/index.html" }
+    { "source": "/((?!api/|assets/).*)", "destination": "/index.html" }
   ],
   "headers": [
     {

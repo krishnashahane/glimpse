@@ -6,8 +6,8 @@ import { FastifyRequest, FastifyReply } from 'fastify'
 declare module 'fastify' {
   interface FastifyInstance {
     prisma: PrismaClient
-    redis: Redis
-    io: SocketServer
+    redis?: Redis
+    io?: SocketServer
     authenticate: (request: FastifyRequest, reply: FastifyReply) => Promise<void>
     optionalAuthenticate: (request: FastifyRequest, reply: FastifyReply) => Promise<void>
   }

@@ -1,9 +1,10 @@
 import Redis from 'ioredis'
 import { config } from '../config'
 
-export const redis = new Redis(config.REDIS_URL, {
-  maxRetriesPerRequest: 3,
-  lazyConnect: true,
-})
+export const redis = config.REDIS_URL
+  ? new Redis(config.REDIS_URL, { maxRetriesPerRequest: 3, lazyConnect: true })
+  : null
 
-redis.on('error', (err) => console.error('Redis error:', err))
+if (redis) {
+  redis.on('error', (err) => console.error('Redis error:', err))
+}

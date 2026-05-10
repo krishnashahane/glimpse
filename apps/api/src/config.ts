@@ -2,7 +2,7 @@ import { z } from 'zod'
 
 const envSchema = z.object({
   DATABASE_URL: z.string(),
-  REDIS_URL: z.string().default('redis://localhost:6379'),
+  REDIS_URL: z.string().optional(),
   JWT_SECRET: z.string().min(32),
   PORT: z.coerce.number().default(3000),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
