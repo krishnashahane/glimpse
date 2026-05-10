@@ -1,0 +1,240 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  USER
+  MODERATOR
+  ADMIN
+}
+
+enum PostType {
+  TEXT
+  LINK
+  IMAGE
+  VIDEO
+  POLL
+}
+
+enum CommunityType {
+  PUBLIC
+  RESTRICTED
+  PRIVATE
+}
+
+enum NotificationType {
+  FOLLOW
+  COMMENT
+  VOTE
+  MENTION
+  COMMUNITY_INVITE
+}
+
+model User {
+  id            String    @id @default(cuid())
+  username      String    @unique
+  handle        String    @unique
+  email         String    @unique
+  passwordHash  String?
+  avatar        String?
+  banner        String?
+  bio           String?
+  website       String?
+  location      String?
+  role          Role      @default(USER)
+  isVerified    Boolean   @default(false)
+  isOnline      Boolean   @default(false)
+  lastSeen      DateTime  @default(now())
+  emailVerified Boolean   @default(false)
+
+  posts         Post[]
+  votes         Vote[]
+
+  followers     Follow[]  @relation("following")
+  following     Follow[]  @relation("follower")
+
+  communities   CommunityMember[]
+  notifications Notification[]
+  sessions      Session[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([handle])
+  @@index([email])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  refreshToken String   @unique
+  expiresAt    DateTime
+  userAgent    String?
+  ipAddress    String?
+  createdAt    DateTime @default(now())
+
+  @@index([userId])
+  @@index([refreshToken])
+}
+
+model Post {
+  id           String    @id @default(cuid())
+  content      String
+  type         PostType  @default(TEXT)
+  mediaUrls    String[]
+  linkUrl      String?
+  linkTitle    String?
+  linkImage    String?
+
+  authorId String
+  author   User   @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  communityId String?
+  community   Community? @relation(fields: [communityId], references: [id])
+
+  parentId String?
+  parent   Post?   @relation("replies", fields: [parentId], references: [id])
+  replies  Post[]  @relation("replies")
+
+  votes Vote[]
+  tags  PostTag[]
+
+  score        Int     @default(0)
+  upvotes      Int     @default(0)
+  downvotes    Int     @default(0)
+  commentCount Int     @default(0)
+  views        Int     @default(0)
+
+  isPinned Boolean @default(false)
+  isNsfw   Boolean @default(false)
+  isHidden Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([authorId])
+  @@index([communityId])
+  @@index([parentId])
+  @@index([score])
+  @@index([createdAt])
+}
+
+model Vote {
+  id     String @id @default(cuid())
+  value  Int
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  postId String
+  post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([userId, postId])
+  @@index([postId])
+}
+
+model Community {
+  id          String        @id @default(cuid())
+  name        String
+  slug        String        @unique
+  description String?
+  avatar      String?
+  banner      String?
+  type        CommunityType @default(PUBLIC)
+  rules       String[]
+  tags        String[]
+
+  posts   Post[]
+  members CommunityMember[]
+
+  memberCount Int @default(0)
+  postCount   Int @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([slug])
+}
+
+model CommunityMember {
+  userId      String
+  communityId String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  community   Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  role        Role      @default(USER)
+  joinedAt    DateTime  @default(now())
+
+  @@id([userId, communityId])
+  @@index([communityId])
+}
+
+model Follow {
+  followerId  String
+  follower    User   @relation("follower", fields: [followerId], references: [id], onDelete: Cascade)
+  followingId String
+  following   User   @relation("following", fields: [followingId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+
+  @@id([followerId, followingId])
+  @@index([followingId])
+  @@index([followerId])
+}
+
+model Tag {
+  id    String    @id @default(cuid())
+  name  String    @unique
+  slug  String    @unique
+  posts PostTag[]
+
+  @@index([slug])
+}
+
+model PostTag {
+  postId String
+  post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
+  tagId  String
+  tag    Tag    @relation(fields: [tagId], references: [id])
+
+  @@id([postId, tagId])
+}
+
+model NewsItem {
+  id          String   @id @default(cuid())
+  title       String
+  url         String   @unique
+  source      String
+  author      String?
+  description String?
+  aiSummary   String?
+  imageUrl    String?
+  tags        String[]
+  score       Int      @default(0)
+  views       Int      @default(0)
+  publishedAt DateTime
+  fetchedAt   DateTime @default(now())
+
+  @@index([score])
+  @@index([publishedAt])
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  type      NotificationType
+  userId    String
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  actorId   String?
+  data      Json
+  read      Boolean          @default(false)
+  createdAt DateTime         @default(now())
+
+  @@index([userId, read])
+  @@index([createdAt])
+}
