@@ -85,7 +85,10 @@ export const communityRoutes: FastifyPluginAsync = async (fastify) => {
     const community = await fastify.prisma.$transaction(async (tx) => {
       const c = await tx.community.create({
         data: {
-          ...result.data,
+          name: result.data.name,
+          slug: result.data.slug,
+          description: result.data.description,
+          type: result.data.type,
           rules: result.data.rules || [],
           tags: result.data.tags || [],
         },
