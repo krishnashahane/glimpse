@@ -51,7 +51,12 @@ export async function buildApp() {
   await app.register(cookie)
 
   await app.register(multipart, {
-    limits: { fileSize: 10 * 1024 * 1024 },
+    limits: {
+      fileSize: 10 * 1024 * 1024,
+      files: 4,
+      fields: 20,
+      parts: 24,
+    },
   })
 
   await app.register(redisPlugin)
@@ -59,6 +64,9 @@ export async function buildApp() {
 
   app.decorate('authenticate', authenticate)
   app.decorate('optionalAuthenticate', optionalAuthenticate)
+  app.decorate('io', {
+    to: () => ({ emit: () => undefined }),
+  } as any)
 
   // Routes
   await app.register(authRoutes, { prefix: '/api/auth' })
