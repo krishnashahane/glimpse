@@ -1,8 +1,12 @@
 import { FastifyPluginAsync } from 'fastify'
+import { z } from 'zod'
+import { paginationSchema } from '../lib/pagination'
 
 export const newsRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.get('/', async (request, reply) => {
-    const { page = 0, limit = 20, tag } = request.query as { page?: number; limit?: number; tag?: string }
+    const parsedQuery = paginationSchema.extend({ tag: z.string().max(50).optional() }).safeParse(request.query)
+    if (!parsedQuery.success) return reply.status(400).send({ error: parsedQuery.error.flatten() })
+    const { page, limit, tag } = parsedQuery.data
 
     const where = tag ? { tags: { has: tag } } : {}
 
@@ -10,13 +14,13 @@ export const newsRoutes: FastifyPluginAsync = async (fastify) => {
       fastify.prisma.newsItem.findMany({
         where,
         orderBy: [{ score: 'desc' }, { publishedAt: 'desc' }],
-        take: Number(limit) + 1,
-        skip: Number(page) * Number(limit),
+        take: limit + 1,
+        skip: page * limit,
       }),
       fastify.prisma.newsItem.count({ where }),
     ])
 
-    const hasMore = news.length > Number(limit)
+    const hasMore = news.length > limit
     return reply.send({ news: hasMore ? news.slice(0, -1) : news, hasMore, total })
   })
 
