@@ -1,4 +1,5 @@
 import { FastifyPluginAsync } from 'fastify'
+import { paginationSchema } from '../lib/pagination'
 import { z } from 'zod'
 import { safeUser } from '../services/auth.service'
 import { httpUrl } from '../lib/safe-url'
@@ -89,7 +90,9 @@ export const userRoutes: FastifyPluginAsync = async (fastify) => {
 
   fastify.get('/:handle/posts', { onRequest: [fastify.optionalAuthenticate] }, async (request, reply) => {
     const { handle } = request.params as { handle: string }
-    const { page = 0, limit = 20 } = request.query as { page?: number; limit?: number }
+    const parsedQuery = paginationSchema.safeParse(request.query)
+    if (!parsedQuery.success) return reply.status(400).send({ error: parsedQuery.error.flatten() })
+    const { page, limit } = parsedQuery.data
 
     const user = await fastify.prisma.user.findUnique({ where: { handle }, select: { id: true } })
     if (!user) return reply.status(404).send({ error: 'Not found' })
@@ -102,11 +105,11 @@ export const userRoutes: FastifyPluginAsync = async (fastify) => {
         _count: { select: { replies: true } },
       },
       orderBy: { createdAt: 'desc' },
-      take: Number(limit) + 1,
-      skip: Number(page) * Number(limit),
+      take: limit + 1,
+      skip: page * limit,
     })
 
-    const hasMore = posts.length > Number(limit)
+    const hasMore = posts.length > limit
     const items = hasMore ? posts.slice(0, -1) : posts
 
     return reply.send({
@@ -117,7 +120,9 @@ export const userRoutes: FastifyPluginAsync = async (fastify) => {
 
   fastify.get('/:handle/followers', async (request, reply) => {
     const { handle } = request.params as { handle: string }
-    const { page = 0, limit = 20 } = request.query as { page?: number; limit?: number }
+    const parsedQuery = paginationSchema.safeParse(request.query)
+    if (!parsedQuery.success) return reply.status(400).send({ error: parsedQuery.error.flatten() })
+    const { page, limit } = parsedQuery.data
 
     const user = await fastify.prisma.user.findUnique({ where: { handle }, select: { id: true } })
     if (!user) return reply.status(404).send({ error: 'Not found' })
@@ -125,8 +130,8 @@ export const userRoutes: FastifyPluginAsync = async (fastify) => {
     const follows = await fastify.prisma.follow.findMany({
       where: { followingId: user.id },
       include: { follower: { select: { id: true, username: true, handle: true, avatar: true, isVerified: true, bio: true } } },
-      take: Number(limit),
-      skip: Number(page) * Number(limit),
+      take: limit,
+      skip: page * limit,
       orderBy: { createdAt: 'desc' },
     })
 
