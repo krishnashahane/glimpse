@@ -1,4 +1,5 @@
 import { FastifyPluginAsync } from 'fastify'
+import { paginationSchema } from '../lib/pagination'
 import { z } from 'zod'
 
 const CreateCommunitySchema = z.object({
@@ -27,7 +28,9 @@ const COMMUNITY_SELECT = {
 
 export const communityRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.get('/', { onRequest: [fastify.optionalAuthenticate] }, async (request, reply) => {
-    const { page = 0, limit = 20, q } = request.query as { page?: number; limit?: number; q?: string }
+    const parsedQuery = paginationSchema.extend({ q: z.string().trim().max(100).optional() }).safeParse(request.query)
+    if (!parsedQuery.success) return reply.status(400).send({ error: parsedQuery.error.flatten() })
+    const { page, limit, q } = parsedQuery.data
 
     const where = q ? { OR: [{ name: { contains: q, mode: 'insensitive' as const } }, { description: { contains: q, mode: 'insensitive' as const } }] } : {}
 
@@ -36,8 +39,8 @@ export const communityRoutes: FastifyPluginAsync = async (fastify) => {
         where,
         select: COMMUNITY_SELECT,
         orderBy: { memberCount: 'desc' },
-        take: Number(limit),
-        skip: Number(page) * Number(limit),
+        take: limit,
+        skip: page * limit,
       }),
       fastify.prisma.community.count({ where }),
     ])
