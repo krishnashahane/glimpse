@@ -4,6 +4,9 @@ import { Suspense, lazy } from 'react'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { PageSpinner } from '@/components/ui/Spinner'
 import { useAuthStore } from '@/stores/auth'
+import { authApi, setAccessToken } from '@/lib/api'
+import { useEffect, useState } from 'react'
+import toast from 'react-hot-toast'
 import { useSocket } from '@/hooks/useSocket'
 
 const Home = lazy(() => import('@/pages/Home'))
@@ -28,6 +31,48 @@ const queryClient = new QueryClient({
   },
 })
 
+function AuthBootstrap({ children }: { children: React.ReactNode }) {
+  const setAuth = useAuthStore((s) => s.setAuth)
+  const clearAuth = useAuthStore((s) => s.clearAuth)
+  const [ready, setReady] = useState(false)
+
+  useEffect(() => {
+    let active = true
+    authApi.refresh()
+      .then(({ data }) => {
+        if (!active || !data?.token || !data?.user) return
+        setAccessToken(data.token)
+        setAuth(data.user, data.token)
+      })
+      .catch(() => {
+        if (active) clearAuth()
+      })
+      .finally(() => {
+        if (active) setReady(true)
+      })
+
+    const onExpired = () => {
+      setAccessToken(null)
+      clearAuth()
+      window.history.replaceState({}, '', '/login')
+      window.dispatchEvent(new PopStateEvent('popstate'))
+      toast.error('Your session has expired')
+    }
+
+    window.addEventListener('glimpse:auth-expired', onExpired)
+    return () => {
+      active = false
+      window.removeEventListener('glimpse:auth-expired', onExpired)
+    }
+  }, [setAuth, clearAuth])
+
+  if (!ready) {
+    return <div className="min-h-screen bg-base flex items-center justify-center"><PageSpinner /></div>
+  }
+
+  return <>{children}</>
+}
+
 function SocketInit() {
   useSocket()
   return null
@@ -42,8 +87,9 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <SocketInit />
+      <AuthBootstrap>
+        <BrowserRouter>
+          <SocketInit />
         <Suspense fallback={<div className="min-h-screen bg-base flex items-center justify-center"><PageSpinner /></div>}>
           <Routes>
             {/* Auth routes */}
@@ -72,7 +118,8 @@ export default function App() {
             </Route>
           </Routes>
         </Suspense>
-      </BrowserRouter>
+        </BrowserRouter>
+      </AuthBootstrap>
     </QueryClientProvider>
   )
 }
