@@ -16,8 +16,13 @@ export function useSocket() {
       return
     }
 
+    const socketBase = import.meta.env.VITE_SOCKET_URL
+    if (!socketBase) {
+      socketRef.current = null
+      return
+    }
+
     if (!socketInstance) {
-      const socketBase = import.meta.env.VITE_SOCKET_URL || '/'
       socketInstance = io(socketBase, {
         auth: { token },
         transports: ['websocket'],
