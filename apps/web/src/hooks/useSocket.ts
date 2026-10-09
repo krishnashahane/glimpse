@@ -9,16 +9,23 @@ export function useSocket() {
   const socketRef = useRef<Socket | null>(null)
 
   useEffect(() => {
-    if (!token) return
+    if (!token) {
+      socketInstance?.disconnect()
+      socketInstance = null
+      socketRef.current = null
+      return
+    }
 
     if (!socketInstance) {
-      socketInstance = io('/', {
+      const socketBase = import.meta.env.VITE_SOCKET_URL || '/'
+      socketInstance = io(socketBase, {
         auth: { token },
         transports: ['websocket'],
         reconnectionAttempts: 5,
         reconnectionDelay: 1000,
       })
     }
+
     socketRef.current = socketInstance
 
     return () => {}
