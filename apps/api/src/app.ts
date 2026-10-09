@@ -34,7 +34,7 @@ export async function buildApp() {
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   })
 
-  await app.register(helmet, { contentSecurityPolicy: false })
+  await app.register(helmet)
 
   await app.register(rateLimit, {
     global: true,
