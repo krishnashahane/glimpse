@@ -1,14 +1,15 @@
 import { FastifyPluginAsync } from 'fastify'
 import { z } from 'zod'
 import { safeUser } from '../services/auth.service'
+import { httpUrl } from '../lib/safe-url'
 
 const UpdateProfileSchema = z.object({
   username: z.string().min(3).max(30).regex(/^[a-zA-Z0-9_]+$/).optional(),
   bio: z.string().max(500).optional(),
-  website: z.string().url().optional().or(z.literal('')),
+  website: httpUrl.optional().or(z.literal('')),
   location: z.string().max(100).optional(),
-  avatar: z.string().url().optional(),
-  banner: z.string().url().optional(),
+  avatar: httpUrl.optional(),
+  banner: httpUrl.optional(),
 })
 
 export const userRoutes: FastifyPluginAsync = async (fastify) => {
