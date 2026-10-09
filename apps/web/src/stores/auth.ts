@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { setAccessToken } from '@/lib/api'
 
 export interface User {
   id: string
@@ -33,9 +34,18 @@ export const useAuthStore = create<AuthState>()((set) => ({
   user: null,
   token: null,
   isAuthenticated: false,
-  setAuth: (user, token) => set({ user, token, isAuthenticated: true }),
+  setAuth: (user, token) => {
+    setAccessToken(token)
+    set({ user, token, isAuthenticated: true })
+  },
   updateUser: (updates) =>
     set((state) => ({ user: state.user ? { ...state.user, ...updates } : null })),
-  logout: () => set({ user: null, token: null, isAuthenticated: false }),
-  clearAuth: () => set({ user: null, token: null, isAuthenticated: false }),
+  logout: () => {
+    setAccessToken(null)
+    set({ user: null, token: null, isAuthenticated: false })
+  },
+  clearAuth: () => {
+    setAccessToken(null)
+    set({ user: null, token: null, isAuthenticated: false })
+  },
 }))
