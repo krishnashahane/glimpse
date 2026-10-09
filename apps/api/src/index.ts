@@ -16,7 +16,7 @@ async function main() {
     transports: ['websocket', 'polling'],
   })
 
-  app.decorate('io', io)
+  ;(app as typeof app & { io: SocketServer }).io = io
   setupSocket(io, app)
 
   // fetch news every hour
