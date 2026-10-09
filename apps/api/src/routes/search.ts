@@ -1,19 +1,21 @@
 import { FastifyPluginAsync } from 'fastify'
+import { z } from 'zod'
+import { paginationSchema } from '../lib/pagination'
 
 export const searchRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.get('/', async (request, reply) => {
-    const { q, type = 'all', page = 0, limit = 20 } = request.query as {
-      q?: string
-      type?: string
-      page?: number
-      limit?: number
-    }
+    const parsedQuery = z.object({
+      q: z.string().trim().min(2).max(100),
+      type: z.enum(['all', 'posts', 'communities', 'users', 'news']).default('all'),
+      page: z.coerce.number().int().min(0).max(10_000).default(0),
+      limit: z.coerce.number().int().min(1).max(50).default(20),
+    }).safeParse(request.query)
+    if (!parsedQuery.success) return reply.status(400).send({ error: parsedQuery.error.flatten() })
 
-    if (!q || q.trim().length < 2) return reply.status(400).send({ error: 'Query too short' })
-
-    const term = q.trim()
-    const skip = Number(page) * Number(limit)
-    const take = Number(limit)
+    const { q, type, page, limit } = parsedQuery.data
+    const term = q
+    const skip = page * limit
+    const take = limit
     const mode = 'insensitive' as const
 
     const results: Record<string, unknown> = {}
@@ -86,7 +88,9 @@ export const searchRoutes: FastifyPluginAsync = async (fastify) => {
   })
 
   fastify.get('/tags', async (request, reply) => {
-    const { q } = request.query as { q?: string }
+    const parsedTags = z.object({ q: z.string().trim().max(100).optional() }).safeParse(request.query)
+    if (!parsedTags.success) return reply.status(400).send({ error: parsedTags.error.flatten() })
+    const { q } = parsedTags.data
     const tags = await fastify.prisma.tag.findMany({
       where: q ? { name: { contains: q, mode: 'insensitive' } } : {},
       select: { id: true, name: true, slug: true, _count: { select: { posts: true } } },
