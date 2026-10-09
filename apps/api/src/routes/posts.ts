@@ -1,4 +1,5 @@
 import { FastifyPluginAsync } from 'fastify'
+import { paginationSchema } from '../lib/pagination'
 import { z } from 'zod'
 import { rankScore } from '../services/ranking.service'
 import { httpUrl } from '../lib/safe-url'
@@ -199,7 +200,9 @@ export const postRoutes: FastifyPluginAsync = async (fastify) => {
 
   fastify.get('/:id/comments', { onRequest: [fastify.optionalAuthenticate] }, async (request, reply) => {
     const { id } = request.params as { id: string }
-    const { page = 0, limit = 50 } = request.query as { page?: number; limit?: number }
+    const parsedQuery = paginationSchema.extend({ limit: z.coerce.number().int().min(1).max(50).default(50) }).safeParse(request.query)
+    if (!parsedQuery.success) return reply.status(400).send({ error: parsedQuery.error.flatten() })
+    const { page, limit } = parsedQuery.data
 
     const comments = await fastify.prisma.post.findMany({
       where: { parentId: id, isHidden: false },
@@ -208,11 +211,11 @@ export const postRoutes: FastifyPluginAsync = async (fastify) => {
         _count: { select: { replies: true } },
       },
       orderBy: [{ score: 'desc' }, { createdAt: 'asc' }],
-      take: Number(limit) + 1,
-      skip: Number(page) * Number(limit),
+      take: limit + 1,
+      skip: page * limit,
     })
 
-    const hasMore = comments.length > Number(limit)
+    const hasMore = comments.length > limit
     const items = hasMore ? comments.slice(0, -1) : comments
 
     let userVotes: Record<string, number> = {}
