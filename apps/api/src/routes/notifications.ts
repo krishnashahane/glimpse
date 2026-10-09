@@ -1,8 +1,11 @@
 import { FastifyPluginAsync } from 'fastify'
+import { paginationSchema } from '../lib/pagination'
 
 export const notificationRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.get('/', { onRequest: [fastify.authenticate] }, async (request, reply) => {
-    const { page = 0, limit = 20 } = request.query as { page?: number; limit?: number }
+    const parsedQuery = paginationSchema.safeParse(request.query)
+    if (!parsedQuery.success) return reply.status(400).send({ error: parsedQuery.error.flatten() })
+    const { page, limit } = parsedQuery.data
 
     const [notifications, unreadCount] = await Promise.all([
       fastify.prisma.notification.findMany({
@@ -11,8 +14,8 @@ export const notificationRoutes: FastifyPluginAsync = async (fastify) => {
           user: { select: { id: true, username: true, handle: true, avatar: true } },
         },
         orderBy: { createdAt: 'desc' },
-        take: Number(limit) + 1,
-        skip: Number(page) * Number(limit),
+        take: limit + 1,
+        skip: page * limit,
       }),
       fastify.prisma.notification.count({ where: { userId: request.user.sub, read: false } }),
     ])
@@ -28,7 +31,7 @@ export const notificationRoutes: FastifyPluginAsync = async (fastify) => {
         : []
     const actorMap = Object.fromEntries(actors.map((a) => [a.id, a]))
 
-    const hasMore = notifications.length > Number(limit)
+    const hasMore = notifications.length > limit
     const items = hasMore ? notifications.slice(0, -1) : notifications
 
     return reply.send({
