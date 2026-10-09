@@ -23,7 +23,9 @@ const COOKIE_OPTS = {
 }
 
 export const authRoutes: FastifyPluginAsync = async (fastify) => {
-  fastify.post('/register', async (request, reply) => {
+  fastify.post('/register', {
+    config: { rateLimit: { max: 5, timeWindow: '15 minutes' } },
+  }, async (request, reply) => {
     const result = RegisterSchema.safeParse(request.body)
     if (!result.success) return reply.status(400).send({ error: result.error.flatten() })
 
@@ -52,7 +54,9 @@ export const authRoutes: FastifyPluginAsync = async (fastify) => {
     return reply.status(201).send({ user: safeUser(user), token })
   })
 
-  fastify.post('/login', async (request, reply) => {
+  fastify.post('/login', {
+    config: { rateLimit: { max: 10, timeWindow: '15 minutes' } },
+  }, async (request, reply) => {
     const result = LoginSchema.safeParse(request.body)
     if (!result.success) return reply.status(400).send({ error: result.error.flatten() })
 
@@ -78,7 +82,9 @@ export const authRoutes: FastifyPluginAsync = async (fastify) => {
     return reply.send({ user: safeUser(user), token })
   })
 
-  fastify.post('/refresh', async (request, reply) => {
+  fastify.post('/refresh', {
+    config: { rateLimit: { max: 30, timeWindow: '15 minutes' } },
+  }, async (request, reply) => {
     const refreshToken = (request.cookies as Record<string, string>)?.refresh_token
     if (!refreshToken) return reply.status(401).send({ error: 'No refresh token' })
 
