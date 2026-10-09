@@ -1,5 +1,4 @@
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
 
 export interface User {
   id: string
@@ -27,28 +26,16 @@ interface AuthState {
   setAuth: (user: User, token: string) => void
   updateUser: (updates: Partial<User>) => void
   logout: () => void
+  clearAuth: () => void
 }
 
-export const useAuthStore = create<AuthState>()(
-  persist(
-    (set) => ({
-      user: null,
-      token: null,
-      isAuthenticated: false,
-      setAuth: (user, token) => {
-        localStorage.setItem('glimpse_token', token)
-        set({ user, token, isAuthenticated: true })
-      },
-      updateUser: (updates) =>
-        set((s) => ({ user: s.user ? { ...s.user, ...updates } : null })),
-      logout: () => {
-        localStorage.removeItem('glimpse_token')
-        set({ user: null, token: null, isAuthenticated: false })
-      },
-    }),
-    {
-      name: 'glimpse-auth',
-      partialize: (s) => ({ user: s.user, token: s.token, isAuthenticated: s.isAuthenticated }),
-    },
-  ),
-)
+export const useAuthStore = create<AuthState>()((set) => ({
+  user: null,
+  token: null,
+  isAuthenticated: false,
+  setAuth: (user, token) => set({ user, token, isAuthenticated: true }),
+  updateUser: (updates) =>
+    set((state) => ({ user: state.user ? { ...state.user, ...updates } : null })),
+  logout: () => set({ user: null, token: null, isAuthenticated: false }),
+  clearAuth: () => set({ user: null, token: null, isAuthenticated: false }),
+}))
