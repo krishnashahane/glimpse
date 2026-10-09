@@ -1,14 +1,15 @@
 import { FastifyPluginAsync } from 'fastify'
 import { z } from 'zod'
 import { rankScore } from '../services/ranking.service'
+import { httpUrl } from '../lib/safe-url'
 
 const CreatePostSchema = z.object({
   content: z.string().min(1).max(40000),
   type: z.enum(['TEXT', 'LINK', 'IMAGE', 'VIDEO', 'POLL']).default('TEXT'),
   communityId: z.string().optional(),
   parentId: z.string().optional(),
-  mediaUrls: z.array(z.string().url()).max(4).optional(),
-  linkUrl: z.string().url().optional(),
+  mediaUrls: z.array(httpUrl).max(4).optional(),
+  linkUrl: httpUrl.optional(),
   linkTitle: z.string().max(300).optional(),
   tags: z.array(z.string().min(1).max(30)).max(5).optional(),
 })
